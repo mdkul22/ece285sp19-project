@@ -90,23 +90,31 @@ class VOCDataset(td.Dataset):
                 if lab_mat[i][j][0] == 1:
                     xi = int(lab_mat[i][j][1].numpy() % 7)
                     yi = int(lab_mat[i][j][2].numpy() % 7)
-                    if target[xi][yi][j] == 1:
-                        target[xi][yi][4:8] = lab_mat[i][j][5:9].numpy()/img_sx
-                        target[xi][yi][objs[i][0]] = 1
+                    if target[xi][yi][30] == 1:
+                        target[xi][yi][5] = lab_mat[i][j][1].numpy()/img_sx
+                        target[xi][yi][6] = lab_mat[i][j][2].numpy()/img_sy
+                        target[xi][yi][7] = lab_mat[i][j][3].numpy()/img_sx
+                        target[xi][yi][8] = lab_mat[i][j][4].numpy()/img_sy
+                        target[xi][yi][9] = 1  
+                        target[xi][yi][9+objs[i][0]] = 1
                     else:
-                        target[xi][yi][0:3] = lab_mat[i][j][1:4].numpy()/img_sy
-                        target[xi][yi][30] = 1                
-                        target[xi][yi][objs[i][0]] = 1
+                        target[xi][yi][0] = lab_mat[i][j][1].numpy()/img_sx
+                        target[xi][yi][1] = lab_mat[i][j][2].numpy()/img_sy
+                        target[xi][yi][2] = lab_mat[i][j][3].numpy()/img_sx
+                        target[xi][yi][3] = lab_mat[i][j][4].numpy()/img_sy
+                        target[xi][yi][4]   = 1
+                        target[xi][yi][30]  = 1  # indicates filled slot              
+                        target[xi][yi][9+objs[i][0]] = 1
         
-                    target = target[:][:][0:29]
-        self.target = torch.from_numpy(target)
+        self.target = torch.from_numpy(np.delete(target, 30, 2))
         return x, d
 
     def number_of_classes(self):
         #return self.data['class'].max() + 1
         # TODO: make more flexible
         return 20
-    
+    def print_target(self):
+        print(self.target)
     
 def myimshow(image, ax=plt):
     image = image.to('cpu').detach().numpy()
@@ -123,8 +131,8 @@ if __name__ == '__main__':
     print(xmlparse[0])
     fig, (ax1,ax2) = plt.subplots(ncols=2)
     #print(axes)
-    x, y = xmlparse[0]
-    print(xmlparse.target)
+    x, y = xmlparse[5]
+    xmlparse.print_target()
     x1, y1 = xmlparse[1]
     myimshow(x, ax=ax1)
     myimshow(x1, ax=ax2)
