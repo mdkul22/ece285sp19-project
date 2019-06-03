@@ -72,7 +72,7 @@ class VOCDataset(td.Dataset):
                 lab_mat[i][x][3]=torch.tensor([[objs[i][3]]])
                 lab_mat[i][x][4]=torch.tensor([[objs[i][4]]])
 
-        
+        objs = np.array(objs)
         # Open and normalize the image
         img = Image.open(img_path).convert('RGB')
         transform = tv.transforms.Compose([
@@ -80,10 +80,26 @@ class VOCDataset(td.Dataset):
             tv.transforms.ToTensor(),
             tv.transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5])
         ])
-        
         x = transform(img)
-        d = lab_mat
+        _, img_sx, img_sy = x.shape
+        d = objs
+        target = torch.zeros((7,7,31))
+        target = target.numpy() 
+        for i in range(len(objs)):
+            for j in range(20):
+                if lab_mat[i][j][0] == 1:
+                    xi = int(lab_mat[i][j][1].numpy() % 7)
+                    yi = int(lab_mat[i][j][2].numpy() % 7)
+                    if target[xi][yi][j] == 1:
+                        target[xi][yi][4:8] = lab_mat[i][j][5:9].numpy()/img_sx
+                        target[xi][yi][objs[i][0]] = 1
+                    else:
+                        target[xi][yi][0:3] = lab_mat[i][j][1:4].numpy()/img_sy
+                        target[xi][yi][30] = 1                
+                        target[xi][yi][objs[i][0]] = 1
         
+                    target = target[:][:][0:29]
+        self.target = torch.from_numpy(target)
         return x, d
 
     def number_of_classes(self):
@@ -92,18 +108,6 @@ class VOCDataset(td.Dataset):
         return 20
     
     
-def convert_uni(d):
-    temp_list=list()
-    one_hot=torch.zeros(20)
-    for x in range(20):
-        if d[0][0] == x+1:
-            one_hot[x]=1
-    temp_list.append(one_hot)
-    temp_list.append(d[0][1:])        
-    return temp_list
-    
-         
-
 def myimshow(image, ax=plt):
     image = image.to('cpu').detach().numpy()
     image = np.moveaxis(image, [0,1,2], [2,0,1])
@@ -120,6 +124,7 @@ if __name__ == '__main__':
     fig, (ax1,ax2) = plt.subplots(ncols=2)
     #print(axes)
     x, y = xmlparse[0]
+    print(xmlparse.target)
     x1, y1 = xmlparse[1]
     myimshow(x, ax=ax1)
     myimshow(x1, ax=ax2)

@@ -45,6 +45,9 @@ class YoloLoss(nt.NeuralNetwork):
     
     def return_loss(self, gtset, y):
         
+        # localisation loss calculation
+        lambda_coord = 5
+        y[:][:][1] - gtset[:][:
         
         
         
@@ -125,6 +128,7 @@ class Yolo(YoloLoss):
         h = self.model(x)
         for k in range(len(self.classifier)):
             h = self.classifier[k](h)
+        print(h.shape)
         return h
     
     def loss(self):
