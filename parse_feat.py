@@ -2,13 +2,13 @@ from xml.dom import minidom
 import glob
 import pandas as pd
 
-def parse():
+def parse(path):
     name_top=[]
     xmin_top=[]
     ymax_top=[]
     width_top=[]
     height_top=[]
-    l=glob.glob("/home/siva/faster-rcnn.pytorch/VOC2012/VOC2012/Annotations/*.xml")
+    l=glob.glob(path)
     df_cols=['name','x','y','w','h']
     out_df = pd.DataFrame(columns = df_cols)
     for k in range (len(l)):
@@ -31,7 +31,7 @@ def parse():
                 ymax=v[i].childNodes[7].childNodes[0].nodeValue
                 width.append(xmax-xmin)
                 height.append(ymax-ymin)
-
+        print(name_top)
         name_top.append(name)
         xmin_top.append(xmin)
         ymax_top.append(ymax)
@@ -42,3 +42,6 @@ def parse():
                                ignore_index = True)
 
         return out_df
+
+if __name__ == '__main__':
+    print(parse("/home/mdk/Desktop/mlip_285/VOCdevkit/VOC2012/Annotations/*.xml"))
