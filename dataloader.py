@@ -7,10 +7,11 @@ import torchvision as tv
 import xml.etree.ElementTree as ET
 from PIL import Image
 from matplotlib import pyplot as plt
+from scipy.misc import imread,imresize
 
 
 class VOCDataset(td.Dataset):
-    def __init__(self, root_dir, mode="train", image_size=(375, 500)):
+    def __init__(self, root_dir, mode="train", image_size=(224, 224)):
         super(VOCDataset, self).__init__()
         self.image_size = image_size
         self.mode = mode
@@ -48,7 +49,10 @@ class VOCDataset(td.Dataset):
         # Get objects and bounding boxes from annotations
         lbl_tree = ET.parse(lbl_path)
         objs = []
-        
+        bbox=[]
+        bboxes=[] 
+        label=[]
+        labels=[]
         
         for obj in lbl_tree.iter(tag='object'):
             name = obj.find('name').text
@@ -58,64 +62,69 @@ class VOCDataset(td.Dataset):
                 ymax = box.find('ymax').text
                 ymin = box.find('ymin').text
             attr = (self.voc_dict[name], (int(xmin)+int(xmax))/2,(int(ymin)+int(ymax))/2, int(xmax)-int(xmin), int(ymax)-int(ymin), 1)
+            attr1=(xmax,xmin,ymax,ymin)
             objs.append(attr)
-         
-        lab_mat=torch.zeros([len(objs),20,5])
+            bbox.append(attr1)
+            label.append(self.voc_dict[name])
+        #bboxes.append(torch.Tensor(bbox))
+        #labels.append(torch.IntTensor(label))
+        
 
-        for i in range(len(objs)):
-            for x in range(20):
-                if objs[i][0] == x+1:
-                    lab_mat[i][x][0]=torch.tensor([[1]])
-            for x in range(20):
-                lab_mat[i][x][1]=torch.tensor([[objs[i][1]]])
-                lab_mat[i][x][2]=torch.tensor([[objs[i][2]]])
-                lab_mat[i][x][3]=torch.tensor([[objs[i][3]]])
-                lab_mat[i][x][4]=torch.tensor([[objs[i][4]]])
-
-        objs = np.array(objs)
+        objs = torch.Tensor(objs)
+    
         # Open and normalize the image
-        img = Image.open(img_path).convert('RGB')
+        img = imread(img_path)
+        h,w,_=img.shape
+        img=imresize(img,(224,224))
         transform = tv.transforms.Compose([
-            #tv.transforms.Resize(self.image_size),
+            #tv.transforms.Resize((448,448)),
             tv.transforms.ToTensor(),
             tv.transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5])
         ])
         x = transform(img)
-        _, img_sx, img_sy = x.shape
         d = objs
-        target = torch.zeros((7,7,31))
-        target = target.numpy() 
+	
+        target = torch.zeros((7,7,30))
+        cls=torch.zeros((len(objs),20))
+        x_list=torch.Tensor((len(objs)))
+        y_list=torch.Tensor((len(objs)))
+        w_list=torch.Tensor((len(objs)))
+        h_list=torch.Tensor((len(objs)))
+        x_index=torch.Tensor((len(objs)))
+        y_index=torch.Tensor((len(objs)))
         for i in range(len(objs)):
-            for j in range(20):
-                if lab_mat[i][j][0] == 1:
-                    xi = int(lab_mat[i][j][1].numpy() % 7)
-                    yi = int(lab_mat[i][j][2].numpy() % 7)
-                    if target[xi][yi][30] == 1:
-                        target[xi][yi][5] = lab_mat[i][j][1].numpy()/img_sx
-                        target[xi][yi][6] = lab_mat[i][j][2].numpy()/img_sy
-                        target[xi][yi][7] = lab_mat[i][j][3].numpy()/img_sx
-                        target[xi][yi][8] = lab_mat[i][j][4].numpy()/img_sy
-                        target[xi][yi][9] = 1  
-                        target[xi][yi][9+objs[i][0]] = 1
-                    else:
-                        target[xi][yi][0] = lab_mat[i][j][1].numpy()/img_sx
-                        target[xi][yi][1] = lab_mat[i][j][2].numpy()/img_sy
-                        target[xi][yi][2] = lab_mat[i][j][3].numpy()/img_sx
-                        target[xi][yi][3] = lab_mat[i][j][4].numpy()/img_sy
-                        target[xi][yi][4]   = 1
-                        target[xi][yi][30]  = 1  # indicates filled slot              
-                        target[xi][yi][9+objs[i][0]] = 1
-        
-        self.target = torch.from_numpy(np.delete(target, 30, 2))
-        return x, d
+            x_list[i]=objs[i][1]/w
+            y_list[i]=objs[i][2]/h
+            w_list[i]=objs[i][3]/w
+            w_list[i]=torch.sqrt(w_list[i])
+            h_list[i]=objs[i][4]/h
+            h_list[i]=torch.sqrt(h_list[i])
+            x_index[i]=(x_list[i]/(1./7)).ceil()-1
+            y_index[i]=(y_list[i]/(1./7)).ceil()-1
+        c=torch.ones(len(objs))
+        bb_block=torch.cat((x_list.view(-1,1),y_list.view(-1,1),w_list.view(-1,1),h_list.view(-1,1),c.view(-1,1)),dim=1)
+        bb_block=bb_block.repeat(1,2)
+
+        for i in range(len(objs)):
+            cls[i,int(objs[i][0])-1]=1
+        final_bb=torch.cat((bb_block,cls),dim=1)
+
+        for i in range(len(objs)):
+            target[int(x_index[i]),int(y_index[i])]=final_bb[i].clone()
+
+        self.target=target
+
+        return x, target
 
     def number_of_classes(self):
         #return self.data['class'].max() + 1
         # TODO: make more flexible
         return 20
+
     def print_target(self):
-        print(self.target)
-    
+        for i in range(7):
+             print(self.target[i])
+
 def myimshow(image, ax=plt):
     image = image.to('cpu').detach().numpy()
     image = np.moveaxis(image, [0,1,2], [2,0,1])
@@ -127,14 +136,14 @@ def myimshow(image, ax=plt):
     return h
 
 if __name__ == '__main__':
-    xmlparse = VOCDataset('/home/mdk/Desktop/mlip_285/VOCdevkit/VOC2012')
+    xmlparse = VOCDataset('../VOCdevkit/VOC2012')
     print(xmlparse[0])
     fig, (ax1,ax2) = plt.subplots(ncols=2)
     #print(axes)
-    x, y = xmlparse[5]
+    x, y = xmlparse[0]
     xmlparse.print_target()
     x1, y1 = xmlparse[1]
     myimshow(x, ax=ax1)
-    myimshow(x1, ax=ax2)
+    #myimshow(x1, ax=ax2)
     plt.show()
     
