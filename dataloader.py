@@ -21,7 +21,13 @@ class VOCDataset(td.Dataset):
         
         # os.listdir returns list in arbitrary order
         self.image_names = os.listdir(self.images_dir)
+        train_l = int(len(self.image_names)*0.7)
+        
+        
         self.image_names = [image.rstrip('.jpg') for image in self.image_names]
+        self.train_list = self.image_names[0:train_l]
+        self.valid_list  = self.image_names[train_l:]
+
         self.voc_dict = {
                         'person':1, 'bird':2, 'cat':3, 'cow':4, 'dog':5, 
                         'horse':6, 'sheep':7, 'aeroplane':8, 'bicycle':9,
@@ -33,7 +39,12 @@ class VOCDataset(td.Dataset):
         
         
     def __len__(self):
-        return len(self.image_names)
+        if self.mode=='train':
+            image_names=self.train_list
+        else:
+            image_names=self.valid_list
+        
+        return len(image_names)
 
     def __repr__(self):
         return "VOC2012Dataset(mode={}, image_size={})". \
@@ -41,10 +52,15 @@ class VOCDataset(td.Dataset):
     
     def __getitem__(self, idx):
         # Get file paths for image and annotation (label)
+        if self.mode=='train':
+            image_names = self.train_list
+        else: 
+            image_names = self.valid_list
+
         img_path = os.path.join(self.images_dir, \
-                                "%s.jpg" % self.image_names[idx])
+                                "%s.jpg" % image_names[idx])
         lbl_path = os.path.join(self.annotations_dir, \
-                                "%s.xml" % self.image_names[idx])   
+                                "%s.xml" % image_names[idx])   
         
         # Get objects and bounding boxes from annotations
         lbl_tree = ET.parse(lbl_path)
@@ -61,7 +77,7 @@ class VOCDataset(td.Dataset):
                 xmin = box.find('xmin').text
                 ymax = box.find('ymax').text
                 ymin = box.find('ymin').text
-            attr = (self.voc_dict[name], (int(xmin)+int(xmax))/2,(int(ymin)+int(ymax))/2, int(xmax)-int(xmin), int(ymax)-int(ymin), 1)
+            attr = (self.voc_dict[name], float((float(xmin)+float(xmax))/2),float((float(ymin)+float(ymax))/2), float(float(xmax)-float(xmin)), float(float(ymax)-float(ymin)), 1)
             attr1=(xmax,xmin,ymax,ymin)
             objs.append(attr)
             bbox.append(attr1)
@@ -79,7 +95,7 @@ class VOCDataset(td.Dataset):
         transform = tv.transforms.Compose([
             #tv.transforms.Resize((448,448)),
             tv.transforms.ToTensor(),
-            tv.transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5])
+            
         ])
         x = transform(img)
         d = objs

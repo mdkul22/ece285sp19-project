@@ -12,14 +12,14 @@ import nntools as nt
 
 class YoloLoss(nt.NeuralNetwork):
 
-    def __init__(self):
+    def __init__(self,n_batch):
         super(YoloLoss, self).__init__()
         self.B = 2
         self.C = 20       
         self.use_gpu=1        
         self.lambda_coord = 5
         self.lambda_noobj = 0.5
-        self.n_batch=4    
+        self.n_batch=n_batch    
     def compute_iou(self, box1, box2):
         """
             cited from: https://github.com/xiongzihua/pytorch-YOLO-v1/blob/master/yoloLoss.py
@@ -208,8 +208,8 @@ class Yolo(YoloLoss):
 
 class VGGTransfer(YoloLoss):
     
-    def __init__(self, num_classes, fine_tuning=False):
-        super(VGGTransfer, self).__init__()
+    def __init__(self, num_classes,n_batch,fine_tuning=False):
+        super(VGGTransfer, self).__init__(n_batch)
         vgg = tv.models.vgg16_bn(pretrained=True)
         for param in vgg.parameters():
             param.requires_grad = fine_tuning

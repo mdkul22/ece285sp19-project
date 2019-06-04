@@ -1,12 +1,12 @@
-import torch
-import nntools as nt
 import os
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.utils.data as td
 import torch.nn.functional as F
 import torchvision as tv
 from PIL import Image
+import nntools as nt
 import matplotlib.pyplot as plt
 from dataloader import VOCDataset, myimshow
 import model
@@ -20,7 +20,8 @@ class statsmanager(nt.StatsManager):
 
     def accumulate(self,loss,x,y,d):
         #Do m_ap calculations
-        pass
+        super(statsmanager,self).accumulate(loss,x,y,d)
+    
 
     def summarize(self):
         loss=super(statsmanager,self).summarize()
@@ -38,13 +39,15 @@ def plot(self,fig,ax1, ax2 ,im):
 lr=1e-3 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
-vgg = model.VGGTransfer(20)
-#vgg.to(device)         
+vgg = model.VGGTransfer(num_classes=20,n_batch=4)
+vgg.to(device)         
 adam=torch.optim.Adam(vgg.parameters(),lr=lr)
 stats_manager=statsmanager()
-train_set=VOCDataset('/home/mdk/Desktop/mlip_285/VOCdevkit/VOC2012')
+train_set=VOCDataset('../VOCdevkit/VOC2012/')
+valid_set=VOCDataset('../VOCdevkit/VOC2012/', mode="val")
 x,y=train_set[0]
-exp1=nt.Experiment(vgg,train_set,train_set,adam,stats_manager,batch_size=4,output_dir="run1",perform_validation_during_training=False)
+exp1=nt.Experiment(vgg,train_set,valid_set,adam,stats_manager,batch_size=4,output_dir="run1",perform_validation_during_training=True)
 fig, (ax1, ax2) = plt.subplots(ncols=2, nrows=1)
-exp1.run(num_epochs=1,plot=lambda exp:plot(exp,fig=fig,ax1=ax1, ax2=ax2 ,im=x))
+exp1.run(num_epochs=5,plot=lambda exp:plot(exp,fig=fig,ax1=ax1, ax2=ax2 ,im=x))
+
 
