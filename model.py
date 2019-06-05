@@ -130,68 +130,75 @@ class Yolo(YoloLoss):
 
     def __init__(self, nbatch):
         super(Yolo, self).__init__(nbatch)
-        self.model = nn.Sequential(
-                    nn.Conv2d(3, 64, 7, 2, 3),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(64, 192, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(192, 128, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(128, 256, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 256, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 512, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(512, 256, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 512, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 256, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 512, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 256, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 512, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 256, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 512, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 512, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(1024, 512, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 512, 1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, stride=2, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, padding=1),
-                    nn.LeakyReLU(0.1, inplace=True)
-                    )
-        self.weight_init(self.model)
+        C = 20
+        self.conv_layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=7//2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.1),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.conv_layer2 = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=192, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(192),
+            nn.LeakyReLU(0.1),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.conv_layer3 = nn.Sequential(
+            nn.Conv2d(in_channels=192, out_channels=128, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.1),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.conv_layer4 = nn.Sequential(
+            nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(1024),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.conv_layer5 = nn.Sequential(
+            nn.Conv2d(in_channels=1024, out_channels=512, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=1024, out_channels=512, kernel_size=1, stride=1, padding=1//2),
+            nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=2, padding=3//2),
+            nn.BatchNorm2d(1024),
+            nn.LeakyReLU(0.1),
+        )
+        self.conv_layer6 = nn.Sequential(
+            nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(1024),
+            nn.LeakyReLU(0.1)
+        )
+        self.conn_layer1 = nn.Sequential(
+            nn.Linear(in_features=7*7*1024, out_features=4096),
+            nn.Dropout(),
+            nn.LeakyReLU(0.1)
+        )
+        self.conn_layer2 = nn.Sequential(nn.Linear(in_features=4096, out_features=7 * 7 * (2 * 5 + C)))
+
+        #self.weight_init(self.conv_layer1)
+        #self.weight_init(self.conv_layer2)
+        #self.weight_init(self.conv_layer3)
+        #self.weight_init(self.conv_layer4)
+        #self.weight_init(self.conv_layer5)
+        #self.weight_init(self.conv_layer6)
         self.classifier = nn.ModuleList()
         self.classifier.append(nn.Linear(16384, 4096))
         self.classifier.append(nn.ReLU(inplace=True))
         self.classifier.append(nn.Dropout(p=0.5))
         self.classifier.append(nn.Linear(4096, 1470))
         
- 
     def weight_init(self, ms):
         for m in ms.modules():
             classname = m.__class__.__name__
@@ -199,11 +206,16 @@ class Yolo(YoloLoss):
                 m.weight.data = nn.init.kaiming_normal_(m.weight.data)
     
     def forward(self, x):
-        h = self.model(x)
-        h = h.view(h.size(0), -1)
-        for k in range(len(self.classifier)):
-            h = self.classifier[k](h)
-        return h
+        conv_layer1 = self.conv_layer1(x)
+        conv_layer2 = self.conv_layer2(conv_layer1)
+        conv_layer3 = self.conv_layer3(conv_layer2)
+        conv_layer4 = self.conv_layer4(conv_layer3)
+        conv_layer5 = self.conv_layer5(conv_layer4)
+        conv_layer6 = self.conv_layer6(conv_layer5)
+        flatten = conv_layer6.view(conv_layer6.size(0), -1)
+        conn_layer1 = self.conn_layer1(flatten)
+        output = self.conn_layer2(conn_layer1)
+        return output
 
 
 class VGGTransfer(YoloLoss):

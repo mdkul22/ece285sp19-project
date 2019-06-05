@@ -79,6 +79,10 @@ class VOCDataset(td.Dataset):
                     ymax = box.find('ymax').text
                     ymin = box.find('ymin').text
                     break
+                xmax = box.find('xmax').text
+                xmin = box.find('xmin').text
+                ymax = box.find('ymax').text
+                ymin = box.find('ymin').text
             attr = (self.voc_dict[name], float((float(xmin)+float(xmax))/2),float((float(ymin)+float(ymax))/2), float(float(xmax)-float(xmin)), float(float(ymax)-float(ymin)), 1)
             attr1=(xmax,xmin,ymax,ymin)
             objs.append(attr)
