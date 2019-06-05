@@ -73,10 +73,12 @@ class VOCDataset(td.Dataset):
         for obj in lbl_tree.iter(tag='object'):
             name = obj.find('name').text
             for box in obj.iter(tag='bndbox'):
-                xmax = box.find('xmax').text
-                xmin = box.find('xmin').text
-                ymax = box.find('ymax').text
-                ymin = box.find('ymin').text
+                if name=='person':
+                    xmax = box.find('xmax').text
+                    xmin = box.find('xmin').text
+                    ymax = box.find('ymax').text
+                    ymin = box.find('ymin').text
+                    break
             attr = (self.voc_dict[name], float((float(xmin)+float(xmax))/2),float((float(ymin)+float(ymax))/2), float(float(xmax)-float(xmin)), float(float(ymax)-float(ymin)), 1)
             attr1=(xmax,xmin,ymax,ymin)
             objs.append(attr)
@@ -112,9 +114,9 @@ class VOCDataset(td.Dataset):
             x_list[i]=objs[i][1]/w
             y_list[i]=objs[i][2]/h
             w_list[i]=objs[i][3]/w
-            w_list[i]=torch.sqrt(w_list[i])
+            #w_list[i]=torch.sqrt(w_list[i])
             h_list[i]=objs[i][4]/h
-            h_list[i]=torch.sqrt(h_list[i])
+            #h_list[i]=torch.sqrt(h_list[i])
             x_index[i]=(x_list[i]/(1./7)).ceil()-1
             y_index[i]=(y_list[i]/(1./7)).ceil()-1
         c=torch.ones(len(objs))

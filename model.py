@@ -49,8 +49,8 @@ class YoloLoss(nt.NeuralNetwork):
     
     def return_loss(self, pred_tensor, target_tensor):
         
-        print("pred_tensor: ", pred_tensor.shape)
-        print("target_tensor: ", target_tensor.shape)
+        #print("pred_tensor: ", pred_tensor.shape)
+        #print("target_tensor: ", target_tensor.shape)
         # localisation loss calculation
         n_elements = self.B * 5 + self.C
         batch = target_tensor.size(0)
@@ -128,18 +128,18 @@ class YoloLoss(nt.NeuralNetwork):
     
 class Yolo(YoloLoss):
 
-    def __init__(self):
-        super(Yolo, self).__init__()
+    def __init__(self, nbatch):
+        super(Yolo, self).__init__(nbatch)
         self.model = nn.Sequential(
                     nn.Conv2d(3, 64, 7, 2, 3),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(192, 192, 3, padding=1),
+                    nn.Conv2d(64, 192, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.MaxPool2d(2, stride=2),
-                    nn.Conv2d(256, 128, 1),
+                    nn.Conv2d(192, 128, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(256, 256, 3, padding=1),
+                    nn.Conv2d(128, 256, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(256, 256, 1),
                     nn.LeakyReLU(0.1, inplace=True),
@@ -148,19 +148,19 @@ class Yolo(YoloLoss):
                     nn.MaxPool2d(2, stride=2),
                     nn.Conv2d(512, 256, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 512, 3, padding=1),
+                    nn.Conv2d(256, 512, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(512, 256, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 512, 3, padding=1),
+                    nn.Conv2d(256, 512, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(512, 256, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 512, 3, padding=1),
+                    nn.Conv2d(256, 512, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(512, 256, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(512, 512, 3, padding=1),
+                    nn.Conv2d(256, 512, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(512, 512, 1),
                     nn.LeakyReLU(0.1, inplace=True),
@@ -169,11 +169,11 @@ class Yolo(YoloLoss):
                     nn.MaxPool2d(2, stride=2),
                     nn.Conv2d(1024, 512, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, padding=1),
+                    nn.Conv2d(512, 1024, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(1024, 512, 1),
                     nn.LeakyReLU(0.1, inplace=True),
-                    nn.Conv2d(1024, 1024, 3, padding=1),
+                    nn.Conv2d(512, 1024, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
                     nn.Conv2d(1024, 1024, 3, padding=1),
                     nn.LeakyReLU(0.1, inplace=True),
@@ -186,10 +186,10 @@ class Yolo(YoloLoss):
                     )
         self.weight_init(self.model)
         self.classifier = nn.ModuleList()
-        self.classifier.append(nn.Linear(1024, 4096))
+        self.classifier.append(nn.Linear(16384, 4096))
         self.classifier.append(nn.ReLU(inplace=True))
         self.classifier.append(nn.Dropout(p=0.5))
-        self.classifier.append(nn.Linear(4096, 30))
+        self.classifier.append(nn.Linear(4096, 1470))
         
  
     def weight_init(self, ms):
@@ -200,9 +200,9 @@ class Yolo(YoloLoss):
     
     def forward(self, x):
         h = self.model(x)
+        h = h.view(h.size(0), -1)
         for k in range(len(self.classifier)):
             h = self.classifier[k](h)
-        print(h.shape)
         return h
 
 
@@ -223,6 +223,5 @@ class VGGTransfer(YoloLoss):
         return y    
 
 
-
 if __name__ == '__main__':
-    x = Network()             
+    x = Yolo(15)             
