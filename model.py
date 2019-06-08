@@ -237,3 +237,22 @@ class VGGTransfer(YoloLoss):
 
 if __name__ == '__main__':
     x = Yolo(15)             
+
+class Resnet18Transfer(YoloLoss):
+    def __init__(self, num_classes, n_batch, fine_tuning=False):
+        super(Resnet18Transfer, self).__init__(n_batch)
+        resnet = tv.models.resnet18(pretrained=True)
+        for param in resnet.parameters():
+            param.requires_grad = fine_tuning
+        num_ftrs = resnet.fc.in_features
+        #resnet.fc = nn.Identity()
+        #self.features = resnet
+        self.features = nn.Sequential(resnet.conv1, resnet.bn1, resnet.layer1, resnet.layer2, resnet.layer3, resnet.layer4,)
+        print(num_ftrs)
+        self.classifier = nn.Sequential(nn.Linear(100352,4096),nn.ReLU(True),nn.Dropout(),nn.Linear(4096,1470),)
+    
+    def forward(self, x):
+        f = self.features(x)
+        f = f.view(f.size(0),-1)
+        y = self.classifier(f)
+        return y
