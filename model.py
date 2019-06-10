@@ -1,3 +1,4 @@
+            
 import os
 import numpy as np
 import torch
@@ -61,6 +62,7 @@ class YoloLoss(nt.NeuralNetwork):
         noo_mask = target_tensor[:,:,:,4] == 0
         coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
         noo_mask = noo_mask.unsqueeze(-1).expand_as(target_tensor)
+
         coo_pred = pred_tensor[coo_mask].view(-1,30)
         box_pred = coo_pred[:,:10].contiguous().view(-1,5) #box[x1,y1,w1,h1,c1]
         class_pred = coo_pred[:,10:]                       #[x2,y2,w2,h2,c2]
@@ -68,6 +70,7 @@ class YoloLoss(nt.NeuralNetwork):
         coo_target = target_tensor[coo_mask].view(-1,30)
         box_target = coo_target[:,:10].contiguous().view(-1,5)
         class_target = coo_target[:,10:]
+
         # compute not contain obj loss
         noo_pred = pred_tensor[noo_mask].view(-1,30)
         noo_target = target_tensor[noo_mask].view(-1,30)
@@ -77,6 +80,7 @@ class YoloLoss(nt.NeuralNetwork):
         noo_pred_c = noo_pred[noo_pred_mask] #noo pred只需要计算 c 的损失 size[-1,2]
         noo_target_c = noo_target[noo_pred_mask]
         nooobj_loss = F.mse_loss(noo_pred_c,noo_target_c,size_average=False)
+
         #compute contain obj loss
         coo_response_mask = torch.cuda.ByteTensor(box_target.size())
         coo_response_mask.zero_()
@@ -98,6 +102,7 @@ class YoloLoss(nt.NeuralNetwork):
             
             coo_response_mask[i+max_index]=1
             coo_not_response_mask[i+1-max_index]=1
+
             #####
             # we want the confidence score to equal the
             # intersection over union (IOU) between the predicted box
@@ -119,8 +124,10 @@ class YoloLoss(nt.NeuralNetwork):
         
         #I believe this bug is simply a typo
         not_contain_loss = F.mse_loss(box_pred_not_response[:,4], box_target_not_response[:,4],size_average=False)
+
         #3.class loss
         class_loss = F.mse_loss(class_pred,class_target,size_average=False)
+
         return (self.l_coord*loc_loss + 2*contain_loss + not_contain_loss + self.l_noobj*nooobj_loss + class_loss)/N
         
     def criterion(self,y,d):
@@ -181,29 +188,28 @@ class Yolo(YoloLoss):
             nn.LeakyReLU(0.1)
         )
         self.conn_layer1 = nn.Sequential(
-            nn.Linear(in_features=7*7*1024, out_features=4096),
+            nn.Linear(in_features=16384, out_features=4096),
             nn.Dropout(),
             nn.LeakyReLU(0.1)
         )
         self.conn_layer2 = nn.Sequential(nn.Linear(in_features=4096, out_features=7 * 7 * (2 * 5 + C)))
 
-        #self.weight_init(self.conv_layer1)
-        #self.weight_init(self.conv_layer2)
-        #self.weight_init(self.conv_layer3)
-        #self.weight_init(self.conv_layer4)
-        #self.weight_init(self.conv_layer5)
-        #self.weight_init(self.conv_layer6)
-        self.classifier = nn.ModuleList()
-        self.classifier.append(nn.Linear(16384, 4096))
-        self.classifier.append(nn.ReLU(inplace=True))
-        self.classifier.append(nn.Dropout(p=0.5))
-        self.classifier.append(nn.Linear(4096, 1470))
         
-    def weight_init(self, ms):
-        for m in ms.modules():
-            classname = m.__class__.__name__
-            if classname.find('Conv') != -1:
+        self.weight_init()
+        
+    
+    def weight_init(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
                 m.weight.data = nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)           
+                m.bias.data.zero_()
     
     def forward(self, x):
         conv_layer1 = self.conv_layer1(x)
@@ -215,23 +221,40 @@ class Yolo(YoloLoss):
         flatten = conv_layer6.view(conv_layer6.size(0), -1)
         conn_layer1 = self.conn_layer1(flatten)
         output = self.conn_layer2(conn_layer1)
+        output = torch.sigmoid(output)
+        output = output.view(-1,7,7,30)
         return output
 
 
 class VGGTransfer(YoloLoss):
     
-    def __init__(self, num_classes,n_batch,fine_tuning=False):
+    def __init__(self, num_classes,n_batch,fine_tuning=False,pre=False):
         super(VGGTransfer, self).__init__(n_batch)
-        vgg = tv.models.vgg16_bn(pretrained=True)
+        vgg = tv.models.vgg16_bn(pretrained=pre)
         for param in vgg.parameters():
             param.requires_grad = fine_tuning
         self.features = vgg.features
         self.classifier = nn.Sequential(nn.Linear(25088,4096),nn.ReLU(True),nn.Dropout(),nn.Linear(4096,1470),)
+        self.weight_init()
+    
+    def weight_init(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data = nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)           
+                m.bias.data.zero_()
 
     def forward(self, x):
         f = self.features(x)
         f = f.view(f.size(0),-1)
         y = self.classifier(f)
+        y = torch.sigmoid(y)
         return y    
 
 

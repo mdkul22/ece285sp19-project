@@ -231,7 +231,11 @@ class Experiment(object):
                                 map_location=self.net.device)
         self.load_state_dict(checkpoint)
         del checkpoint
-
+    
+    def forward_net(self, x):
+        y = self.net.forward(x)
+        return y
+    
     def run(self, num_epochs, plot=None):
         """Runs the experiment, i.e., trains the network using backpropagation
         based on the optimizer and the training set. Also performs statistics at

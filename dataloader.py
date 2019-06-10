@@ -18,11 +18,11 @@ class VOCDataset(td.Dataset):
         self.images_dir = os.path.join(root_dir, "JPEGImages")
         
         # os.listdir returns list in arbitrary order
-        self.image_names = os.listdir(self.images_dir)
+        self.image_names = os.listdir(self.annotations_dir)
         train_l = int(len(self.image_names)*0.7)
         
         
-        self.image_names = [image.rstrip('.jpg') for image in self.image_names]
+        self.image_names = [image.rstrip('.xml') for image in self.image_names]
         self.train_list = self.image_names[0:train_l]
         self.valid_list  = self.image_names[train_l:]
         self.test_list=self.image_names
@@ -56,6 +56,7 @@ class VOCDataset(td.Dataset):
             image_names = self.valid_list
         elif self.mode=='test':
             image_names= self.test_list
+
         img_path = os.path.join(self.images_dir, \
                                 "%s.jpg" % image_names[idx])
         lbl_path = os.path.join(self.annotations_dir, \
@@ -131,9 +132,11 @@ class VOCDataset(td.Dataset):
             c=torch.ones(len(objs))
             bb_block=torch.cat((del_x.view(-1,1),del_y.view(-1,1),w_list.view(-1,1),h_list.view(-1,1),c.view(-1,1)),dim=1)
             bb_block=bb_block.repeat(1,2)
+
             for i in range(len(objs)):
                 cls[i,int(objs[i][0])-1]=1
             final_bb=torch.cat((bb_block,cls),dim=1)
+
             for i in range(len(objs)):
                 target[int(x_index[i]),int(y_index[i])]=final_bb[i].clone()
                 
@@ -144,6 +147,7 @@ class VOCDataset(td.Dataset):
             return x,target,image_names[idx]
         else:
             return x, target
+
     def number_of_classes(self):
         #return self.data['class'].max() + 1
         # TODO: make more flexible
